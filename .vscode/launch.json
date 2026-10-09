@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DevPad}/api-demo",
+            "name": "Debug APIDemo (api-demo)",
+            "target": "APIDemo",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug APIDemo (api-demo)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DevPad}/api-demo",
+            "name": "Release APIDemo (api-demo)",
+            "target": "APIDemo",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release APIDemo (api-demo)"
+        }
+    ]
+}
