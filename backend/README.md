@@ -11,6 +11,8 @@ Interactive API docs: http://localhost:8000/docs
 
 Folder -> Notebook -> Page -> Stroke
 
+# wait shouldn't it be Folder -> Notebook -> Page -> Cell -> Stroke? Each cell should have the code it runs saved along w/ corresponding strokes
+
 | Resource | Endpoints |
 |---|---|
 | Folders | `POST/GET /folders`, `GET/PATCH/DELETE /folders/{id}` |
