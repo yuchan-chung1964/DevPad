@@ -2,7 +2,9 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
 sqlalchemy>=2.0
+PyJWT[crypto]>=2.8
 
 # Tests
 pytest>=8
 httpx>=0.27
+httpx2  # required by recent starlette's TestClient

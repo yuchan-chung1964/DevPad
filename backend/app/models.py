@@ -1,4 +1,4 @@
-"""Database tables: Folder -> Notebook -> Page -> Cell (strokes are stored as JSON on the cell)."""
+"""Database tables: User; Folder -> Notebook -> Page -> Cell (strokes are stored as JSON on the cell)."""
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
@@ -37,10 +37,19 @@ class Timestamped:
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
 
 
+class User(Base):
+    """An identity from the auth provider; `id` is the token's `sub` claim."""
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=now)
+
+
 class Folder(Timestamped, Base):
     __tablename__ = "folders"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     parent_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("folders.id"), index=True)  # None = library root
     name: Mapped[str] = mapped_column(String(200))
 
@@ -49,6 +58,7 @@ class Notebook(Timestamped, Base):
     __tablename__ = "notebooks"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     folder_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("folders.id"), index=True)  # None = library root
     title: Mapped[str] = mapped_column(String(200))
     cover_color: Mapped[str] = mapped_column(String(9), default="#4A6FA5")

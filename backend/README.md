@@ -19,7 +19,29 @@ Run the tests with `pytest` (from `backend/`). They use a throwaway in-memory da
 | Env var | Default | |
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./devpad.db` | For Postgres: `pip install "psycopg[binary]"` and use `postgresql+psycopg://user:pass@host/devpad` |
-| `CORS_ORIGINS` | `*` | Comma-separated list of allowed origins |
+| `CORS_ORIGINS` | `*` | Comma-separated list of allowed origins (set explicitly in production) |
+| `JWT_JWKS_URL` | - | Identity provider's JWKS endpoint (RS256/ES256 tokens). Preferred. |
+| `JWT_SECRET` | - | Shared secret for HS256 tokens. Used only if `JWT_JWKS_URL` is unset. |
+| `JWT_AUDIENCE` / `JWT_ISSUER` | - | Checked when set. Set both in production. |
+| `RATE_LIMIT_READ` / `RATE_LIMIT_WRITE` / `RATE_LIMIT_ANON` | `240` / `120` / `20` | Requests per minute |
+| `MAX_BODY_BYTES` | `5242880` | Larger request bodies get 413 |
+| `ENABLE_DOCS` | `1` | Set to `0` to hide `/docs`, `/redoc`, `/openapi.json` |
+
+If neither `JWT_JWKS_URL` nor `JWT_SECRET` is set, every data route answers 503 (it never runs open).
+
+## Authentication, ownership, limits
+
+- Every route except `/health` needs `Authorization: Bearer <JWT>` from your identity provider
+  (Supabase, Auth0, Clerk, Firebase...). The token must be signed, unexpired, and carry `sub`; `sub` is the user id.
+  Users are created on first request. In `/docs`, use **Authorize** to paste a token.
+- Folders and notebooks belong to the user that created them (pages and cells through their notebook). Other
+  people's resources return **404**, never 403, so ids can't be probed.
+- Rate limits are per user (reads and writes counted separately) and per client IP for requests without a valid
+  token. Over the limit: **429** with `Retry-After`. The counters are in memory, so with several workers
+  use a shared store (Redis) instead.
+- Limits: 100k chars of code per cell, 10k points per stroke, 5k strokes per cell, and per-user quotas (see
+  `app/config.py`). `GET /folders` and `GET /notebooks` take `limit` (max 500) and `offset`.
+- `owner_id` was added to folders and notebooks, so delete an existing `devpad.db` once.
 
 Tables are created on startup if they don't exist. There are no migrations yet, so after changing
 `app/models.py`, delete `devpad.db` (or add Alembic once the schema settles).
@@ -52,7 +74,9 @@ Folder -> Notebook -> Page -> Cell -> Stroke
 | Path | |
 |---|---|
 | `app/main.py` | App, CORS, router registration |
-| `app/config.py` | Settings from environment variables |
+| `app/config.py` | Settings from environment variables, size limits and quotas |
+| `app/auth.py` | JWT validation, current user, rate-limit hook |
+| `app/ratelimit.py` | Sliding-window limiter and quota check |
 | `app/db.py` | Engine, session, `DB` dependency |
 | `app/models.py` | SQLAlchemy tables |
 | `app/schemas.py` | Pydantic request/response models |
