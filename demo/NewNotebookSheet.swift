@@ -6,7 +6,8 @@ struct NewNotebookSheet: View {
     @State private var color = NotebookPalette.colors[0]
     @State private var template: PageTemplate = .lined
 
-    let onCreate: (Notebook) -> Void
+    /// Called with the chosen title, cover color and first-page paper; the caller creates the notebook.
+    let onCreate: (String, Color, PageTemplate) -> Void
 
     var body: some View {
         NavigationStack {
@@ -42,9 +43,7 @@ struct NewNotebookSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
                         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        onCreate(Notebook(title: trimmed.isEmpty ? "Untitled" : trimmed,
-                                          coverColor: color,
-                                          pages: [NotePage(template: template)]))
+                        onCreate(trimmed.isEmpty ? "Untitled" : trimmed, color, template)
                         dismiss()
                     }
                 }

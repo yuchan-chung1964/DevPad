@@ -3,6 +3,8 @@ import SwiftUI
 /// Library screen: a grid of folders and notebooks. Used for the root and for every sub-folder.
 struct FolderView: View {
     @ObservedObject var folder: Folder
+    @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var auth: AuthStore
 
     @State private var showNewNotebook = false
     @State private var showNewFolder = false
@@ -16,7 +18,9 @@ struct FolderView: View {
 
     var body: some View {
         ScrollView {
-            if folder.folders.isEmpty && folder.notebooks.isEmpty {
+            if !folder.isLoaded {
+                ProgressView().padding(.top, 80)
+            } else if folder.folders.isEmpty && folder.notebooks.isEmpty {
                 Text("Nothing here yet. Tap + to create a notebook.")
                     .foregroundColor(.secondary)
                     .padding(.top, 80)
@@ -32,7 +36,7 @@ struct FolderView: View {
                                 showRenameFolder = true
                             }
                             Button("Delete", role: .destructive) {
-                                folder.folders.removeAll { $0.id == f.id }
+                                Task { await store.deleteFolder(f, from: folder) }
                             }
                         }
                 }
@@ -46,7 +50,7 @@ struct FolderView: View {
                                 showRenameNotebook = true
                             }
                             Button("Delete", role: .destructive) {
-                                folder.notebooks.removeAll { $0.id == nb.id }
+                                Task { await store.deleteNotebook(nb, from: folder) }
                             }
                         }
                 }
@@ -54,7 +58,17 @@ struct FolderView: View {
             .padding(24)
         }
         .navigationTitle(folder.name)
+        .task { if !folder.isLoaded { await store.loadFolder(folder) } }
+        .refreshable { await store.loadFolder(folder) }
         .toolbar {
+            if folder.isRoot {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        if case .signedIn(let email?) = auth.state { Text(email) }
+                        Button("Sign out", role: .destructive) { Task { await auth.signOut() } }
+                    } label: { Image(systemName: "person.circle") }
+                }
+            }
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button {
                     nameDraft = ""
@@ -64,13 +78,15 @@ struct FolderView: View {
             }
         }
         .sheet(isPresented: $showNewNotebook) {
-            NewNotebookSheet { folder.notebooks.append($0) }
+            NewNotebookSheet { title, color, template in
+                Task { await store.createNotebook(title: title, color: color, template: template, in: folder) }
+            }
         }
         .alert("New folder", isPresented: $showNewFolder) {
             TextField("Name", text: $nameDraft)
             Button("Create") {
                 let n = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !n.isEmpty { folder.folders.append(Folder(name: n)) }
+                if !n.isEmpty { Task { await store.createFolder(named: n, in: folder) } }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -78,7 +94,7 @@ struct FolderView: View {
             TextField("Name", text: $nameDraft)
             Button("Save") {
                 let n = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !n.isEmpty { renameFolderTarget?.name = n }
+                if !n.isEmpty, let target = renameFolderTarget { Task { await store.renameFolder(target, to: n) } }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -86,7 +102,7 @@ struct FolderView: View {
             TextField("Name", text: $nameDraft)
             Button("Save") {
                 let n = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !n.isEmpty { renameNotebookTarget?.title = n }
+                if !n.isEmpty, let target = renameNotebookTarget { Task { await store.renameNotebook(target, to: n) } }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -107,7 +123,8 @@ struct FolderCard: View {
             }
             .aspectRatio(PageSize.ratio, contentMode: .fit)
             Text(folder.name).fontWeight(.semibold).lineLimit(1)
-            Text("\(folder.folders.count + folder.notebooks.count) items")
+            // Contents of a sub-folder aren't known until it has been opened once.
+            Text(folder.isLoaded ? "\(folder.folders.count + folder.notebooks.count) items" : " ")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -121,15 +138,18 @@ struct NotebookCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 0) {
                 Rectangle().fill(notebook.coverColor).frame(width: 8)
+                // Ink thumbnails are only available once the notebook has been opened.
                 if let first = notebook.pages.first {
                     PageThumbnail(page: first)
+                } else {
+                    PaperView(template: .blank)
                 }
             }
             .aspectRatio(PageSize.ratio, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
             Text(notebook.title).fontWeight(.semibold).lineLimit(1)
-            Text(notebook.pages.count == 1 ? "1 page" : "\(notebook.pages.count) pages")
+            Text(notebook.pageCount == 1 ? "1 page" : "\(notebook.pageCount) pages")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
