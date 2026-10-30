@@ -47,10 +47,14 @@ Strokes = Annotated[list[Stroke], Field(max_length=MAX_STROKES_PER_CELL)]
 
 
 # ---------- Cells ----------
+CellKind = Literal["code", "text", "ink"]
+
+
 class Cell(ORMModel):
-    """A block on a page: handwritten strokes plus the code they represent."""
+    """A block on a page: code, typed text (content in `code`), or freehand ink. Any kind may carry strokes."""
     id: UUID
     page_id: UUID
+    kind: CellKind
     language: str
     code: str
     strokes: list[Stroke]
@@ -59,6 +63,7 @@ class Cell(ORMModel):
 
 
 class CellCreate(BaseModel):
+    kind: CellKind = "code"                       # fixed once created
     language: Language = "python"
     code: Code = ""
     strokes: Strokes = []
@@ -78,6 +83,7 @@ class Page(ORMModel):
     """Full page, including every cell and its strokes, in order."""
     id: UUID
     notebook_id: UUID
+    title: str
     template: PageTemplate
     cells: list[Cell]
     created_at: datetime
@@ -88,17 +94,23 @@ class PageSummary(BaseModel):
     """Lightweight page info (no cells), e.g. for the page-thumbnail sidebar."""
     id: UUID
     notebook_id: UUID
+    title: str
     template: PageTemplate
     cell_count: int
     updated_at: datetime
 
 
+PageTitle = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]   # empty = untitled
+
+
 class PageCreate(BaseModel):
+    title: PageTitle = ""
     template: PageTemplate = "blank"
     position: Optional[int] = Field(None, ge=0)   # insert index; defaults to end
 
 
 class PageUpdate(BaseModel):
+    title: Annotated[Optional[PageTitle], NotNull] = None
     template: Annotated[Optional[PageTemplate], NotNull] = None
     cell_order: Annotated[Optional[list[UUID]], NotNull] = None   # send full new order to reorder cells
 

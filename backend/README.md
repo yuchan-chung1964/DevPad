@@ -14,6 +14,14 @@ Interactive API docs: http://localhost:8000/docs
 
 Run the tests with `pytest` (from `backend/`). They use a throwaway in-memory database.
 
+To check a real running server the way the iOS client talks to it, start it with a test secret and run the
+smoke test (it signs its own HS256 tokens; use a throwaway `DATABASE_URL`):
+
+```
+JWT_SECRET=<32+ random chars> DATABASE_URL=sqlite:///./smoke.db uvicorn app.main:app
+JWT_SECRET=<same secret> python scripts/smoke_test.py
+```
+
 ## Configuration
 
 | Env var | Default | |
@@ -29,6 +37,26 @@ Run the tests with `pytest` (from `backend/`). They use a throwaway in-memory da
 
 If neither `JWT_JWKS_URL` nor `JWT_SECRET` is set, every data route answers 503 (it never runs open).
 
+## Supabase
+
+For the iOS app's Supabase sign-in, point the API at the same project (Project Settings > API / JWT Keys):
+
+```
+JWT_JWKS_URL=https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+JWT_ISSUER=https://<project-ref>.supabase.co/auth/v1
+JWT_AUDIENCE=authenticated
+```
+
+New Supabase projects sign tokens with asymmetric keys (ES256), which is what `JWT_JWKS_URL` verifies. Older
+projects that still use the shared "JWT secret" (HS256) can set `JWT_SECRET` instead (with the same issuer and
+audience). For Postgres, use the project's connection string as `DATABASE_URL`
+(`postgresql+psycopg://...`, after `pip install "psycopg[binary]"`).
+
+To test that path locally without Supabase, `scripts/dev_jwks.py` serves a fake JWKS and writes a matching
+private key; run the API with `JWT_JWKS_URL=http://localhost:9999/jwks.json JWT_AUDIENCE=authenticated
+JWT_ISSUER=http://localhost:54321/auth/v1` and the smoke test with `SMOKE_PRIVATE_KEY=scripts/dev_jwt_private.pem`
+plus the same audience and issuer.
+
 ## Authentication, ownership, limits
 
 - Every route except `/health` needs `Authorization: Bearer <JWT>` from your identity provider
@@ -41,7 +69,8 @@ If neither `JWT_JWKS_URL` nor `JWT_SECRET` is set, every data route answers 503 
   use a shared store (Redis) instead.
 - Limits: 100k chars of code per cell, 10k points per stroke, 5k strokes per cell, and per-user quotas (see
   `app/config.py`). `GET /folders` and `GET /notebooks` take `limit` (max 500) and `offset`.
-- `owner_id` was added to folders and notebooks, so delete an existing `devpad.db` once.
+- `owner_id` (folders, notebooks), `Page.title` and `Cell.kind` were added after the first version, so delete an
+  existing `devpad.db` once.
 
 Tables are created on startup if they don't exist. There are no migrations yet, so after changing
 `app/models.py`, delete `devpad.db` (or add Alembic once the schema settles).
@@ -50,8 +79,10 @@ Tables are created on startup if they don't exist. There are no migrations yet, 
 
 Folder -> Notebook -> Page -> Cell -> Stroke
 
-- A **cell** is a block on a page: the code it represents (`code`, `language`) plus its handwritten strokes.
-  The API stores code; it doesn't run it.
+- A **cell** is a block on a page, with a fixed `kind`: `code` (the default: `code` + `language`, optionally
+  with the strokes that represent it), `text` (typed text, kept in `code`, e.g. `language: "markdown"`), or
+  `ink` (freehand strokes). The API stores cells; it doesn't run code.
+- A page has an optional `title` (up to 200 characters, empty = untitled), set on create or with `PATCH`.
 - Notebooks keep their pages in order (`page_order`); pages keep their cells in order (`cells`).
 - A notebook is created with one blank page and must always keep at least one. A page can have no cells.
 - Folders can only be deleted when empty.

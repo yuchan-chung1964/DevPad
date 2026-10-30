@@ -82,6 +82,7 @@ class Page(Timestamped, Base):
     notebook_id: Mapped[UUID] = mapped_column(ForeignKey("notebooks.id", ondelete="CASCADE"), index=True)
     position: Mapped[int]
     template: Mapped[str] = mapped_column(String(16), default="blank")
+    title: Mapped[str] = mapped_column(String(200), default="")
 
     notebook: Mapped[Notebook] = relationship(back_populates="pages")
     cells: Mapped[list["Cell"]] = relationship(
@@ -93,12 +94,14 @@ class Page(Timestamped, Base):
 
 
 class Cell(Timestamped, Base):
-    """A block on a page: handwritten strokes plus the code they represent."""
+    """A block on a page. `kind` says what it is: "code" (code, optionally with the strokes that represent it),
+    "text" (typed text; the content is in `code`), or "ink" (freehand strokes)."""
     __tablename__ = "cells"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     page_id: Mapped[UUID] = mapped_column(ForeignKey("pages.id", ondelete="CASCADE"), index=True)
     position: Mapped[int]
+    kind: Mapped[str] = mapped_column(String(8), default="code")
     language: Mapped[str] = mapped_column(String(32), default="python")
     code: Mapped[str] = mapped_column(Text, default="")
     # Always reassign (never mutate in place) so SQLAlchemy notices the change.

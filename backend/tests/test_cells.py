@@ -12,6 +12,25 @@ def test_create_cell_defaults(client, page_url):
     assert cell["language"] == "python" and cell["code"] == "" and cell["strokes"] == []
 
 
+def test_cell_kinds(client, page_url):
+    assert client.post(f"{page_url}/cells", json={}).json()["kind"] == "code"   # existing default
+
+    note = client.post(f"{page_url}/cells", json={"kind": "text", "language": "markdown", "code": "- [ ] buy milk"})
+    assert note.status_code == 201
+    assert note.json()["kind"] == "text" and note.json()["code"] == "- [ ] buy milk"
+
+    ink = client.post(f"{page_url}/cells", json={"kind": "ink", "strokes": [stroke()]}).json()
+    assert ink["kind"] == "ink" and len(ink["strokes"]) == 1
+
+    kinds = [c["kind"] for c in client.get(f"{page_url}/cells").json()]
+    assert kinds == ["code", "text", "ink"]
+
+    assert client.post(f"{page_url}/cells", json={"kind": "image"}).status_code == 422
+    # The kind is fixed once created: PATCH ignores it rather than changing it.
+    url = f"{page_url}/cells/{note.json()['id']}"
+    assert client.patch(url, json={"kind": "ink", "code": "done"}).json()["kind"] == "text"
+
+
 def test_create_cell_with_content_and_position(client, page_url):
     a = client.post(f"{page_url}/cells", json={"code": "a = 1"}).json()
     b = client.post(f"{page_url}/cells", json={"code": "b = 2", "language": "javascript",

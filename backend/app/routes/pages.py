@@ -52,6 +52,7 @@ def list_pages(notebook_id: UUID, db: DB, user: CurrentUser):
         PageSummary(
             id=p.id,
             notebook_id=p.notebook_id,
+            title=p.title,
             template=p.template,
             cell_count=counts.get(p.id, 0),
             updated_at=p.updated_at,
@@ -64,7 +65,7 @@ def list_pages(notebook_id: UUID, db: DB, user: CurrentUser):
 def create_page(notebook_id: UUID, body: PageCreate, db: DB, user: CurrentUser):
     nb = get_notebook(db, user, notebook_id)
     enforce_quota(len(nb.pages), config.MAX_PAGES_PER_NOTEBOOK, "pages per notebook")
-    page = models.Page(template=body.template)
+    page = models.Page(template=body.template, title=body.title)
     insert_at(nb.pages, page, body.position)
     nb.updated_at = models.now()
     db.flush()
@@ -79,7 +80,7 @@ def read_page(notebook_id: UUID, page_id: UUID, db: DB, user: CurrentUser):
 
 @router.patch("/{page_id}", response_model=Page)
 def update_page(notebook_id: UUID, page_id: UUID, body: PageUpdate, db: DB, user: CurrentUser):
-    """Change the template, or reorder cells."""
+    """Change the title or template, or reorder cells."""
     page = get_page(db, user, notebook_id, page_id)
     data = body.model_dump(exclude_unset=True)
     if "cell_order" in data:

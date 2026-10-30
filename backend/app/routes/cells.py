@@ -45,7 +45,7 @@ def list_cells(notebook_id: UUID, page_id: UUID, db: DB, user: CurrentUser):
 def create_cell(notebook_id: UUID, page_id: UUID, body: CellCreate, db: DB, user: CurrentUser):
     page = get_page(db, user, notebook_id, page_id)
     enforce_quota(len(page.cells), config.MAX_CELLS_PER_PAGE, "cells per page")
-    cell = models.Cell(language=body.language, code=body.code, strokes=_dump(body.strokes))
+    cell = models.Cell(kind=body.kind, language=body.language, code=body.code, strokes=_dump(body.strokes))
     insert_at(page.cells, cell, body.position)
     touch(page)
     db.flush()

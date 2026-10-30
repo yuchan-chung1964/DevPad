@@ -28,6 +28,23 @@ def test_list_pages_summary(client, notebook, page_url):
     assert pages[0]["cell_count"] == 2 and "cells" not in pages[0]
 
 
+def test_page_title(client, notebook, page_url):
+    assert client.get(page_url).json()["title"] == ""          # untitled by default
+
+    created = client.post(f"/notebooks/{notebook['id']}/pages", json={"title": "  Lecture 3  "}).json()
+    assert created["title"] == "Lecture 3"                      # whitespace is trimmed
+
+    r = client.patch(page_url, json={"title": "Big-O notes"})
+    assert r.status_code == 200 and r.json()["title"] == "Big-O notes"
+    assert client.patch(page_url, json={"title": ""}).json()["title"] == ""   # can be cleared
+
+    titles = [p["title"] for p in client.get(f"/notebooks/{notebook['id']}/pages").json()]
+    assert titles == ["", "Lecture 3"]
+
+    assert client.patch(page_url, json={"title": None}).status_code == 422
+    assert client.patch(page_url, json={"title": "x" * 201}).status_code == 422
+
+
 def test_update_template_touches_notebook(client, notebook, page_url):
     r = client.patch(page_url, json={"template": "dotted"})
     assert r.status_code == 200 and r.json()["template"] == "dotted"
