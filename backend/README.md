@@ -57,6 +57,30 @@ private key; run the API with `JWT_JWKS_URL=http://localhost:9999/jwks.json JWT_
 JWT_ISSUER=http://localhost:54321/auth/v1` and the smoke test with `SMOKE_PRIVATE_KEY=scripts/dev_jwt_private.pem`
 plus the same audience and issuer.
 
+## Deploying
+
+`Dockerfile` builds a container that runs the API with uvicorn (`docker build -t devpad-api backend`). It has not
+been built or run on the machine this was written on, so do a test deploy before relying on it. Any host that runs
+a container works (Render, Fly.io, Railway, Cloud Run...). Set these as the host's secrets/environment, never in git:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `postgresql+psycopg://user:password@host:5432/dbname`. Supabase's Postgres works: Project Settings > Database > Connection string. Use the pooler (IPv4) string if your host has no IPv6. |
+| `JWT_JWKS_URL`, `JWT_ISSUER`, `JWT_AUDIENCE` | See "Supabase" above |
+| `CORS_ORIGINS` | Your web origin(s), comma-separated. Native iOS requests aren't subject to CORS. |
+| `FORWARDED_ALLOW_IPS` | Your host's proxy IP(s), so rate limiting sees real client IPs. Leave unset to ignore `X-Forwarded-For`. |
+| `ENABLE_DOCS` | `0` (the image's default) hides `/docs`; set `1` to see it |
+
+Notes:
+- Run one worker/instance. The rate limiter's counters live in memory, so more than one would each allow the full
+  limit. Move it to Redis before scaling out.
+- Tables are created on startup, with no migrations yet. Adding a column later means a migration (Alembic) or
+  recreating the table, so settle the schema before real users have data.
+- Terminate HTTPS at the host (the app is plain HTTP behind it), and cap request size there too.
+- After deploying, run the smoke test against it with a real token:
+  `API_URL=https://your-host SMOKE_TOKEN=<access token> python scripts/smoke_test.py`.
+- Postgres hasn't been tried with this code yet (only SQLite), so check that first.
+
 ## Authentication, ownership, limits
 
 - Every route except `/health` needs `Authorization: Bearer <JWT>` from your identity provider
