@@ -8,7 +8,11 @@ Last updated 2026-11-13. Current goal: a **team demo / class project** (works fo
   real Supabase token. See `backend/README.md`.
 - **iOS integration** (`ios-integration`): API client, Supabase sign-in and wired-up views. **Never compiled** (written on a PC
   without Swift), so expect compile errors on the first Xcode build. See `demo/README.md`.
-- **Not done yet:** Postgres has never been run with this code, nothing is deployed, and the PR into `main` hasn't been merged.
+- **Postgres:** the smoke test passed (53 of 53) against the Supabase Postgres database with a real Supabase sign-in
+  (2026-11-13). Row-level security was enabled on the five tables.
+- **Not done yet:** nothing is deployed, the iOS code has never been built, and the RLS read-back check (create a record, read
+  it with the publishable key, expect nothing) hasn't been run.
+- The backend PR into `main` was merged (#1).
 
 ## Decisions made
 | Topic | Decision |
@@ -25,7 +29,7 @@ Last updated 2026-11-13. Current goal: a **team demo / class project** (works fo
    (<https://github.com/yuchan-chung1964/DevPad/compare/main...backend-api?expand=1>), get a teammate to review it, and merge.
    Tell Felix that his `tables` branch was merged with `backend-api` (his `store.py` sketch is superseded by
    `backend/app/models.py`; it is still in history at commit `1586296`).
-2. **Test on Postgres.** Point `DATABASE_URL` at the Supabase database and run `backend/scripts/smoke_test.py`.
+2. **Test on Postgres. Done 2026-11-13** (53 of 53 passed). Point `DATABASE_URL` at the Supabase database and run `backend/scripts/smoke_test.py`.
    Enter the database password in your own shell or the host's settings, never in chat or in git.
    Use the **session pooler** connection string (port 5432). After the server first creates the tables, **enable row-level
    security on all five** (`users`, `folders`, `notebooks`, `pages`, `cells`; SQL in `backend/README.md`). Supabase exposes
@@ -50,7 +54,7 @@ Last updated 2026-11-13. Current goal: a **team demo / class project** (works fo
 - Quota checks can be raced slightly (count, then insert).
 - The Swift code is uncompiled. Known limits once it builds: notebook covers show blank paper until opened, pencil tilt isn't
   saved, and a page over 5,000 strokes fails to save.
-- Postgres, the Docker image, and the cross-user check with real tokens are untested.
+- The Docker image, the cross-user check with real tokens, and the RLS read-back check are untested.
 
 ## Ideas, not scheduled
 Sign in with Apple, sharing and collaboration, trash and restore, tags, page templates beyond blank/lined/grid/dotted,

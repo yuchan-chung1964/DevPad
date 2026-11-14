@@ -79,7 +79,7 @@ Notes:
 - Terminate HTTPS at the host (the app is plain HTTP behind it), and cap request size there too.
 - After deploying, run the smoke test against it with a real token:
   `API_URL=https://your-host SMOKE_TOKEN=<access token> python scripts/smoke_test.py`.
-- Postgres hasn't been tried with this code yet (only SQLite), so check that first.
+- Postgres has been tried: the smoke test passed against a Supabase Postgres database (session pooler) on 2026-11-13.
 
 ### Supabase Postgres: lock the tables down
 Tables the app creates in Supabase's `public` schema are also reachable through Supabase's own REST API with the

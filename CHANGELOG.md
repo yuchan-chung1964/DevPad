@@ -2,6 +2,12 @@
 
 Most recent first. Commit ids are from the shared repo `yuchan-chung1964/DevPad`.
 
+## 2026-11-13: Postgres verified
+- Ran `backend/scripts/smoke_test.py` against the Supabase Postgres database (session pooler) with a real Supabase token:
+  53 passed, 0 failed (three cross-user checks skipped: only one user). The five tables were created by the app on first
+  start, and row-level security was then enabled on them.
+- Backend `main` now includes PR #1 (merge `556308a`).
+
 ## 2026-11-13: documentation
 - Added `ROADMAP.md` and this file; updated `backend/README.md` (Render steps, known limitations) and `demo/README.md`
   (integration status).
