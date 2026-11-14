@@ -81,6 +81,42 @@ Notes:
   `API_URL=https://your-host SMOKE_TOKEN=<access token> python scripts/smoke_test.py`.
 - Postgres hasn't been tried with this code yet (only SQLite), so check that first.
 
+### Supabase Postgres: lock the tables down
+Tables the app creates in Supabase's `public` schema are also reachable through Supabase's own REST API with the
+publishable key unless row-level security (RLS) is on. Right after the server first creates the tables, run this in
+the Supabase SQL editor (the backend connects as `postgres`, which bypasses RLS, so it keeps working):
+
+```sql
+alter table public.users     enable row level security;
+alter table public.folders   enable row level security;
+alter table public.notebooks enable row level security;
+alter table public.pages     enable row level security;
+alter table public.cells     enable row level security;
+```
+
+With RLS on and no policies, the REST API returns nothing for these tables. Check the Table Editor shows "RLS enabled".
+Use the **session pooler** connection string (port 5432); the transaction pooler (port 6543) doesn't suit this code.
+Add the same SQL after any new table is created (for example by a future migration).
+
+### Deploying on Render
+Render's screens may differ slightly from these steps.
+1. New > Web Service, connect the GitHub repo, and pick the branch to deploy (`main` once the PR is merged).
+2. Root Directory `backend`, Runtime Docker (it uses `backend/Dockerfile`). One instance.
+3. Health check path `/health`.
+4. Environment: `DATABASE_URL`, `JWT_JWKS_URL`, `JWT_ISSUER`, `JWT_AUDIENCE`, `CORS_ORIGINS` (values in the table above). Enter
+   the database password here, as a secret.
+5. Deploy, then run `API_URL=https://<your-service>.onrender.com SMOKE_TOKEN=<access token> python scripts/smoke_test.py`.
+6. Put the service URL in the iOS app's `DEVPAD_API_URL`. Free instances sleep when idle, so the first request can be slow.
+
+## Known limitations
+- `JWT_ISSUER` and `JWT_AUDIENCE` are optional in code: if unset, those token checks are skipped. Set both in production.
+- No migrations yet (tables are created on startup).
+- The body-size limit checks only the declared `Content-Length`; also cap size at the host.
+- Rate-limit counters are in memory (single instance only).
+- Quota checks (count then insert) can be raced slightly.
+
+See `../ROADMAP.md` for the plan.
+
 ## Authentication, ownership, limits
 
 - Every route except `/health` needs `Authorization: Bearer <JWT>` from your identity provider
