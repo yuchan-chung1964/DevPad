@@ -38,3 +38,14 @@ Requires a Mac with Xcode 15 or newer. Deployment target: iOS 16.0 or newer.
 | `FolderView.swift` | Folder/notebook grid |
 | `EditorView.swift` | Page canvas, toolbar, page strip |
 | `NewNotebookSheet.swift` | New-notebook sheet |
+
+## Backend integration status
+The API client, Supabase sign-in and wired-up views live on the **`ios-integration`** branch (not on this branch), as a draft
+for review. It has **never been compiled**: it was written on a PC without a Swift toolchain. That branch's `demo/README.md`
+has the full setup. For whoever builds it in Xcode:
+1. Add the `supabase-swift` package (2.x) and set `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `DEVPAD_API_URL` in Info.plist.
+2. Build and fix compile errors. Likely spots: the Supabase calls in `Auth/` and the PencilKit stroke conversion in
+   `Networking/StrokeCodec.swift`.
+3. Try it against a running backend: sign up, create a notebook, draw, close the app, reopen, and confirm the ink is still there.
+4. Expect: notebook covers show blank paper until opened, pencil tilt isn't saved, and a page over 5,000 strokes won't save.
+See `../ROADMAP.md` for what comes next (typed-note editing first).
