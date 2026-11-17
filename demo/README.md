@@ -48,4 +48,4 @@ has the full setup. For whoever builds it in Xcode:
    `Networking/StrokeCodec.swift`.
 3. Try it against a running backend: sign up, create a notebook, draw, close the app, reopen, and confirm the ink is still there.
 4. Expect: notebook covers show blank paper until opened, pencil tilt isn't saved, and a page over 5,000 strokes won't save.
-See `../ROADMAP.md` for what comes next (typed-note editing first).
+See `../PROJECT.md` for what comes next (typed-note editing first).

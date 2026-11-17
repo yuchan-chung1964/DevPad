@@ -115,7 +115,7 @@ Render's screens may differ slightly from these steps.
 - Rate-limit counters are in memory (single instance only).
 - Quota checks (count then insert) can be raced slightly.
 
-See `../ROADMAP.md` for the plan.
+See `../PROJECT.md` for the roadmap, changelog and a file-by-file architecture guide.
 
 ## Authentication, ownership, limits
 
